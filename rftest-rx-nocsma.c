@@ -86,13 +86,11 @@ int count=0;
 int pcnt=0;
 
 
-void tmr0_isr(void) {
+void tick(void) {
 
   if(count%10==0) {
-    //printf("clock tick, POWER: %u\n\r", get_power());
-    //printf("pcnt: %d\n", pcnt);
-    printf("Packets-per-second: %d (power: %u)\n\r",pcnt*6, get_power());
-    //pcnt=0;
+    printf("Packets-per-second: %d (power: %u)\n\r",pcnt, get_power());
+    pcnt=0;
 		toggle_led();
 	}
 
@@ -117,27 +115,30 @@ void main(void) {
 	vreg_init();
 	maca_init();
 
-	gpio_pad_dir_set( 1ULL << 44 );
-
-	set_power(0x0f); /* 0dbm */
-	set_channel(1); /* channel 11 */
-	
 	/* pin direction */
 	led_init();
-
-	*TMR_ENBL     = 0;                    /* tmrs reset to enabled */
-	*TMR0_SCTRL   = 0;
-	*TMR0_CSCTRL  = 0x0040;
-	*TMR0_LOAD    = 0;                    /* reload to zero */
-	*TMR0_COMP_UP = 18750;                /* trigger a reload at the end */
-	*TMR0_CMPLD1  = 18750;                /* compare 1 triggered reload level, 10HZ maybe? */
-	*TMR0_CNTR    = 0;                    /* reset count register */
-	*TMR0_CTRL    = (COUNT_MODE<<13) | (PRIME_SRC<<9) | (SEC_SRC<<7) | (ONCE<<6) | (LEN<<5) | (DIR<<4) | (CO_INIT<<3) | (OUT_MODE);
-	*TMR_ENBL     = 0xf;                  /* enable all the timers --- why not? */
 	led_on();
-	enable_irq(TMR);
+  
+  ///* Setup the timer */
+  *TMR_ENBL = 0;                     /* tmrs reset to enabled */
+  *TMR0_SCTRL = 0;
+  *TMR0_LOAD = 0;                    /* reload to zero */
+  *TMR0_COMP_UP = 18750;             /* trigger a reload at the end */
+  *TMR0_CMPLD1 = 18750;              /* compare 1 triggered reload level, 10HZ maybe? */
+  *TMR0_CNTR = 0;                    /* reset count register */
+  *TMR0_CTRL = (COUNT_MODE<<13) | (PRIME_SRC<<9) | (SEC_SRC<<7) | (ONCE<<6) | (LEN<<5) | (DIR<<4) | (CO_INIT<<3) | (OUT_MODE);
+  *TMR_ENBL = 0xf;                   /* enable all the timers --- why not? */
+	
+  set_power(0x0f); /* 0dbm */
+	set_channel(1); /* channel 11 */
+	
+  gpio_pad_dir_set( 1ULL << 44 );
+	
 
 	while(1) {		
+    
+    if((*TMR0_SCTRL >> 15) != 0) 
+      tick();
 
     /* call check_maca() periodically --- this works around */
     /* a few lockup conditions */
@@ -149,7 +150,7 @@ void main(void) {
       val = val | (p->data[2] << 8*2);
       val = val | (p->data[3] << 8*1);
       val = val | (p->data[4]);
-      //printf("Counter: %u RxTime: %u LQI: %u, RSSI: %u, POWER: %u, COUNT: %d\n\r", val, (unsigned int)p->rx_time, p->lqi, p->rssi, get_power(),count);
+
       free_packet(p);
       pcnt++;
 	  }

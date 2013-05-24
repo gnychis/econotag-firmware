@@ -57,7 +57,7 @@
 #define DELAY 10000000
 
 int count=0;
-unsigned int pkt_cnt=0;
+unsigned int pcnt=0;
 
 void fill_packet(volatile packet_t *p) {
   p->length = 8;
@@ -73,12 +73,12 @@ void fill_packet(volatile packet_t *p) {
 
 }
 
-void tmr0_isr(void) {
+void tick(void) {
 
   if(count%10==0) {
-    printf("clock tick (%d), POWER: %u\n\r", pkt_cnt*6, get_power());
-    //printf("Packets-per-second: %d (power: %u)\n\r",pkt_cnt*6, get_power());
-    //pkt_cnt=0;
+    printf("clock tick (%d), POWER: %u\n\r", pcnt*6, get_power());
+    //printf("Packets-per-second: %d (power: %u)\n\r",pcnt*6, get_power());
+    //pcnt=0;
   }
 
   *TMR0_SCTRL = 0; /*clear bit 15, and all the others --- should be ok, but clearly not "the right thing to do" */
@@ -88,7 +88,7 @@ void tmr0_isr(void) {
 void main(void) {
   volatile packet_t *p;
   unsigned int cnt=0;
-  //int i;
+  int i;
 
   /* trim the reference osc. to 24MHz */
   trim_xtal();
@@ -113,15 +113,10 @@ void main(void) {
   *GPIO_FUNC_SEL2 = (0x01 << ((44-16*2)*2));
   gpio_pad_dir_set( 1ULL << 44 );
 
-  print_welcome("rftest-tx-gnychis");
-
-  set_ed(1);
-  set_ed_thresh(4);
-
   while(1) {		
     
     if((*TMR0_SCTRL >> 15) != 0) 
-      tmr0_isr();
+      tick();
 
     /* call check_maca() periodically --- this works around */
     /* a few lockup conditions */
@@ -140,24 +135,11 @@ void main(void) {
       p->data[1] = (cnt >> 8*2) & 0xff;
       p->data[0] = (cnt >> 8*3) & 0xff;
 
-      //printf("rftest-tx %u--- %d\n\r", cnt, get_power());
-      //print_packet(p);
-
       tx_packet(p);
       cnt++;
-      pkt_cnt++;
-      //if(cnt%100==0)
-      //  printf("Packets: %u (Power: %u)\n\r", cnt, get_power());
+      pcnt++;
 
-      //for(i=0; i<DELAY; i++) { continue; }
+      for(i=0; i<DELAY; i++) { continue; }
     }
-
-    if(uart1_can_get()) {
-      uart1_getc();
-      set_ed((get_ed()+1)%2);
-      printf("RSSI: %u, ED: %u, ED_THRESH: %u, POWER: %u\n\r", get_rssi(), get_ed(), get_ed_thresh(), get_power());
-    }
-
   }
-
 }
