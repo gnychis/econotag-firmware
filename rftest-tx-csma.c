@@ -57,7 +57,7 @@
 #define DELAY 10000000
 
 int count=0;
-unsigned int pcnt=0;
+int pcnt=0;
 
 void fill_packet(volatile packet_t *p) {
   p->length = 8;
@@ -76,9 +76,8 @@ void fill_packet(volatile packet_t *p) {
 void tick(void) {
 
   if(count%10==0) {
-    printf("clock tick (%d), POWER: %u\n\r", pcnt*6, get_power());
-    //printf("Packets-per-second: %d (power: %u)\n\r",pcnt*6, get_power());
-    //pcnt=0;
+    printf("Packets-per-second: %d (power: %u)\n\r",pcnt, get_power());
+    pcnt=0;
   }
 
   *TMR0_SCTRL = 0; /*clear bit 15, and all the others --- should be ok, but clearly not "the right thing to do" */
