@@ -83,11 +83,16 @@ void toggle_led(void) {
 }
 
 int count=0;
+int pcnt=0;
+
 
 void tmr0_isr(void) {
 
-  if(count%100==0) {
-    printf("clock tick\n\r");
+  if(count%10==0) {
+    //printf("clock tick, POWER: %u\n\r", get_power());
+    //printf("pcnt: %d\n", pcnt);
+    printf("Packets-per-second: %d (power: %u)\n\r",pcnt*6, get_power());
+    //pcnt=0;
 		toggle_led();
 	}
 
@@ -146,6 +151,7 @@ void main(void) {
       val = val | (p->data[4]);
       //printf("Counter: %u RxTime: %u LQI: %u, RSSI: %u, POWER: %u, COUNT: %d\n\r", val, (unsigned int)p->rx_time, p->lqi, p->rssi, get_power(),count);
       free_packet(p);
+      pcnt++;
 	  }
   }
 }

@@ -76,8 +76,9 @@ void fill_packet(volatile packet_t *p) {
 void tmr0_isr(void) {
 
   if(count%10==0) {
-    printf("Packets-per-second: %d (power: %u)\n\r",pkt_cnt*6, get_power());
-    pkt_cnt=0;
+    printf("clock tick (%d), POWER: %u\n\r", pkt_cnt*6, get_power());
+    //printf("Packets-per-second: %d (power: %u)\n\r",pkt_cnt*6, get_power());
+    //pkt_cnt=0;
   }
 
   *TMR0_SCTRL = 0; /*clear bit 15, and all the others --- should be ok, but clearly not "the right thing to do" */
@@ -154,7 +155,7 @@ void main(void) {
     if(uart1_can_get()) {
       uart1_getc();
       set_ed((get_ed()+1)%2);
-      printf("RSSI: %u, ED: %u, ED_THRESH: %u\n\r", get_rssi(), get_ed(), get_ed_thresh());
+      printf("RSSI: %u, ED: %u, ED_THRESH: %u, POWER: %u\n\r", get_rssi(), get_ed(), get_ed_thresh(), get_power());
     }
 
   }
