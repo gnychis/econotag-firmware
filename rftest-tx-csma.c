@@ -134,6 +134,7 @@ void main(void) {
       p->data[1] = (cnt >> 8*2) & 0xff;
       p->data[0] = (cnt >> 8*3) & 0xff;
 
+      while(get_power()>70);
       tx_packet(p);
       cnt++;
       pcnt++;
