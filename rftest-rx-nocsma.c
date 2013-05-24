@@ -95,7 +95,6 @@ void tick(void) {
 	}
 
 	*TMR0_SCTRL = 0;
-	*TMR0_CSCTRL = 0x0040; /* clear compare flag */
 	count++;
 }
 
