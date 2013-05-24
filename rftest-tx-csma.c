@@ -41,12 +41,23 @@
 #include "config.h"
 
 #define LED LED_RED
+#define COUNT_MODE 1      /* use rising edge of primary source */
+#define PRIME_SRC  0xf    /* Perip. clock with 128 prescale (for 24Mhz = 187500Hz)*/
+#define SEC_SRC    0      /* don't need this */
+#define ONCE       0      /* keep counting */
+#define LEN        1      /* count until compare then reload with value in LOAD */
+#define DIR        0      /* count up */
+#define CO_INIT    0      /* other counters cannot force a re-initialization of this counter */
+#define OUT_MODE   0      /* OFLAG is asserted while counter is active */
 
 /* 802.15.4 PSDU is 127 MAX */
 /* 2 bytes are the FCS */
 /* therefore 125 is the max payload length */
 #define PAYLOAD_LEN 16
 #define DELAY 10000000
+
+int count=0;
+unsigned int pkt_cnt=0;
 
 void fill_packet(volatile packet_t *p) {
   p->length = 8;
@@ -62,6 +73,16 @@ void fill_packet(volatile packet_t *p) {
 
 }
 
+void tmr0_isr(void) {
+
+  if(count%10==0) {
+    printf("Packets-per-second: %d (power: %u)\n\r",pkt_cnt*6, get_power());
+    pkt_cnt=0;
+  }
+
+  *TMR0_SCTRL = 0; /*clear bit 15, and all the others --- should be ok, but clearly not "the right thing to do" */
+  count++;
+}
 
 void main(void) {
   volatile packet_t *p;
@@ -73,6 +94,16 @@ void main(void) {
   uart_init(INC, MOD, SAMP);
   vreg_init();
   maca_init();
+  
+  ///* Setup the timer */
+  *TMR_ENBL = 0;                     /* tmrs reset to enabled */
+  *TMR0_SCTRL = 0;
+  *TMR0_LOAD = 0;                    /* reload to zero */
+  *TMR0_COMP_UP = 18750;             /* trigger a reload at the end */
+  *TMR0_CMPLD1 = 18750;              /* compare 1 triggered reload level, 10HZ maybe? */
+  *TMR0_CNTR = 0;                    /* reset count register */
+  *TMR0_CTRL = (COUNT_MODE<<13) | (PRIME_SRC<<9) | (SEC_SRC<<7) | (ONCE<<6) | (LEN<<5) | (DIR<<4) | (CO_INIT<<3) | (OUT_MODE);
+  *TMR_ENBL = 0xf;                   /* enable all the timers --- why not? */
 
   set_channel(1); /* channel 11 */
   set_power(0x12); /* 0x12 is the highest, not documented */
@@ -87,6 +118,9 @@ void main(void) {
   set_ed_thresh(4);
 
   while(1) {		
+    
+    if((*TMR0_SCTRL >> 15) != 0) 
+      tmr0_isr();
 
     /* call check_maca() periodically --- this works around */
     /* a few lockup conditions */
@@ -110,8 +144,9 @@ void main(void) {
 
       tx_packet(p);
       cnt++;
-      if(cnt%100==0)
-        printf("Packets: %u (Power: %u)\n\r", cnt, get_power());
+      pkt_cnt++;
+      //if(cnt%100==0)
+      //  printf("Packets: %u (Power: %u)\n\r", cnt, get_power());
 
       //for(i=0; i<DELAY; i++) { continue; }
     }

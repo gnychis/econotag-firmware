@@ -72,6 +72,7 @@ void fill_packet(volatile packet_t *p) {
 
 int count=0;
 unsigned int pkt_cnt=0;
+unsigned int cnt=0;
 
 void tmr0_isr(void) {
 
@@ -129,16 +130,17 @@ void main(void) {
     if(p) {
       fill_packet(p);
 
-      p->data[3] = pkt_cnt & 0xff;
-      p->data[2] = (pkt_cnt >> 8*1) & 0xff;
-      p->data[1] = (pkt_cnt >> 8*2) & 0xff;
-      p->data[0] = (pkt_cnt >> 8*3) & 0xff;
+      p->data[3] = cnt & 0xff;
+      p->data[2] = (cnt >> 8*1) & 0xff;
+      p->data[1] = (cnt >> 8*2) & 0xff;
+      p->data[0] = (cnt >> 8*3) & 0xff;
 
       //printf("rftest-tx %u--- ", pkt_cnt);
       //print_packet(p);
 
       tx_packet(p);
       pkt_cnt++;
+      cnt++;
 
       for(i=0; i<DELAY; i++) { continue; }
     }
