@@ -66,10 +66,8 @@ void maca_rx_callback(volatile packet_t *p) {
 		for(i=0; i<DELAY; i++) { continue; }
 }
 
-volatile uint8_t led;
-
-int count=0;
-int pcnt=0;
+volatile int count=0;
+volatile int pcnt=0;
 
 void tick(void) {
 
@@ -88,8 +86,6 @@ void main(void) {
 	gpio_data(0);
 	
 	gpio_pad_dir_set( 1ULL << LED );
-        /* read from the data register instead of the pad */
-	/* this is needed because the led clamps the voltage low */
 	gpio_data_sel( 1ULL << LED);
 
 	/* trim the reference osc. to 24MHz */
@@ -123,7 +119,7 @@ void main(void) {
     check_maca();
 
     if((p = rx_packet())) {
-      unsigned int val=0;
+      volatile unsigned int val=0;
       val = val | (p->data[1] << 8*3);
       val = val | (p->data[2] << 8*2);
       val = val | (p->data[3] << 8*1);
