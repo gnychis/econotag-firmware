@@ -57,27 +57,31 @@
 #define DELAY 10000000
 
 volatile int count=0;
-volatile int pcnt=0;
+volatile int current_pkts=0;
 
 void fill_packet(volatile packet_t *p) {
+  static volatile unsigned int cnt=0;
   p->length = 8;
   p->offset = 0;
-  p->data[0] = 0x03;
-  p->data[1] = 0x08;
-  p->data[2] = 0x17;
-  p->data[3] = 0xff;
+  
+  p->data[3] = cnt & 0xff;
+  p->data[2] = (cnt >> 8*1) & 0xff;
+  p->data[1] = (cnt >> 8*2) & 0xff;
+  p->data[0] = (cnt >> 8*3) & 0xff;
+  
   p->data[4] = 0xff;
   p->data[5] = 0xff;
   p->data[6] = 0xff;
   p->data[7] = 0x07;
 
+  cnt++;
 }
 
 void tick(void) {
 
   if(count%10==0) {
-    printf("Packets-per-second: %d (power: %u)\n\r",pcnt, get_power());
-    pcnt=0;
+    printf("Packets-per-second: %d (power: %u)\n\r",current_pkts, get_power());
+    current_pkts=0;
   }
 
   *TMR0_SCTRL = 0; /*clear bit 15, and all the others --- should be ok, but clearly not "the right thing to do" */
@@ -86,7 +90,6 @@ void tick(void) {
 
 void main(void) {
   volatile packet_t *p;
-  volatile unsigned int cnt=0;
   volatile int i;
 
   /* trim the reference osc. to 24MHz */
@@ -130,17 +133,11 @@ void main(void) {
       volatile uint16_t power = get_power();
       fill_packet(p);
 
-      p->data[3] = cnt & 0xff;
-      p->data[2] = (cnt >> 8*1) & 0xff;
-      p->data[1] = (cnt >> 8*2) & 0xff;
-      p->data[0] = (cnt >> 8*3) & 0xff;
-
       printf("Power: %u\n\r", power);  // <--- causes it to work
       //get_power();    // <--- doesn't help any
       while(power>74) {}
       tx_packet(p);
-      cnt++;
-      pcnt++;
+      current_pkts++;
 
       for(i=0; i<DELAY; i++) { continue; }
     }
