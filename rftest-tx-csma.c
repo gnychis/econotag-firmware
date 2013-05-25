@@ -90,7 +90,6 @@ void tick(void) {
 
 void main(void) {
   volatile packet_t *p;
-  volatile int i;
 
   /* trim the reference osc. to 24MHz */
   trim_xtal();
@@ -130,16 +129,13 @@ void main(void) {
 
     p = get_free_packet();
     if(p) {
-      volatile uint16_t power = get_power();
       fill_packet(p);
 
-      printf("Power: %u\n\r", power);  // <--- causes it to work
-      //get_power();    // <--- doesn't help any
-      while(power>74) {}
+      printf("Power: %u\n\r", get_power());  // <--- causes it to work
+      get_power();    // <--- doesn't help any
+      while(get_power()>74) {}
       tx_packet(p);
       current_pkts++;
-
-      for(i=0; i<DELAY; i++) { continue; }
     }
   }
 }
