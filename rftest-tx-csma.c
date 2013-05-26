@@ -63,12 +63,12 @@ void fill_packet(volatile packet_t *p) {
   static volatile unsigned int cnt=0;
   p->length = 8;
   p->offset = 0;
-  
+
   p->data[3] = cnt & 0xff;
   p->data[2] = (cnt >> 8*1) & 0xff;
   p->data[1] = (cnt >> 8*2) & 0xff;
   p->data[0] = (cnt >> 8*3) & 0xff;
-  
+
   p->data[4] = 0xff;
   p->data[5] = 0xff;
   p->data[6] = 0xff;
@@ -96,7 +96,7 @@ void main(void) {
   uart_init(INC, MOD, SAMP);
   vreg_init();
   maca_init();
-  
+
   ///* Setup the timer */
   *TMR_ENBL = 0;                     /* tmrs reset to enabled */
   *TMR0_SCTRL = 0;
@@ -115,7 +115,7 @@ void main(void) {
   gpio_pad_dir_set( 1ULL << 44 );
 
   while(1) {		
-    
+
     if((*TMR0_SCTRL >> 15) != 0) 
       tick();
 

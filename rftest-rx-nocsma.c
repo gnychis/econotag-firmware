@@ -55,15 +55,15 @@
 #define NEWLED (1ULL << LED_GREEN)
 
 void maca_rx_callback(volatile packet_t *p) {
-	(void)p;
-	int i;
-		gpio_data(NEWLED);
-		
-		for(i=0; i<DELAY; i++) { continue; }
+  (void)p;
+  int i;
+  gpio_data(NEWLED);
 
-		gpio_data(0);
-		
-		for(i=0; i<DELAY; i++) { continue; }
+  for(i=0; i<DELAY; i++) { continue; }
+
+  gpio_data(0);
+
+  for(i=0; i<DELAY; i++) { continue; }
 }
 
 volatile int count=0;
@@ -74,25 +74,25 @@ void tick(void) {
   if(count%10==0) {
     printf("Packets-per-second: %d (power: %u)\n\r",pcnt, get_power());
     pcnt=0;
-	}
+  }
 
-	*TMR0_SCTRL = 0;
-	count++;
+  *TMR0_SCTRL = 0;
+  count++;
 }
 
 void main(void) {
-	volatile packet_t *p;
+  volatile packet_t *p;
 
-	gpio_data(0);
-	
-	gpio_pad_dir_set( 1ULL << LED );
-	gpio_data_sel( 1ULL << LED);
+  gpio_data(0);
 
-	/* trim the reference osc. to 24MHz */
-	trim_xtal();
-	uart_init(INC, MOD, SAMP);
-	vreg_init();
-	maca_init();
+  gpio_pad_dir_set( 1ULL << LED );
+  gpio_data_sel( 1ULL << LED);
+
+  /* trim the reference osc. to 24MHz */
+  trim_xtal();
+  uart_init(INC, MOD, SAMP);
+  vreg_init();
+  maca_init();
 
   ///* Setup the timer */
   *TMR_ENBL = 0;                     /* tmrs reset to enabled */
@@ -103,14 +103,14 @@ void main(void) {
   *TMR0_CNTR = 0;                    /* reset count register */
   *TMR0_CTRL = (COUNT_MODE<<13) | (PRIME_SRC<<9) | (SEC_SRC<<7) | (ONCE<<6) | (LEN<<5) | (DIR<<4) | (CO_INIT<<3) | (OUT_MODE);
   *TMR_ENBL = 0xf;                   /* enable all the timers --- why not? */
-	
-	set_channel(1); /* channel 11 */
+
+  set_channel(1); /* channel 11 */
   set_power(0x0f); /* 0dbm */
-	
+
   gpio_pad_dir_set( 1ULL << 44 );
 
-	while(1) {		
-    
+  while(1) {		
+
     if((*TMR0_SCTRL >> 15) != 0) 
       tick();
 
@@ -127,6 +127,6 @@ void main(void) {
 
       free_packet(p);
       pcnt++;
-	  }
+    }
   }
 }
