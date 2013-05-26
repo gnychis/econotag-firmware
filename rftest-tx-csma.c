@@ -77,6 +77,17 @@ void fill_packet(volatile packet_t *p) {
   cnt++;
 }
 
+volatile int transmitting=0;
+void maca_tx_callback(volatile packet_t *p) {
+	switch(p->status) {
+	case 0:
+    transmitting=0;
+		break;
+	default:
+    break;
+	}
+}
+
 void tick(void) {
 
   if(count%10==0) {
@@ -90,7 +101,7 @@ void tick(void) {
 
 void main(void) {
   volatile packet_t *p;
-	volatile uint32_t i;
+	//volatile uint32_t i;
 
   /* trim the reference osc. to 24MHz */
   trim_xtal();
@@ -132,9 +143,11 @@ void main(void) {
     if(p) {
       fill_packet(p);
       while(get_power()>74) {}
+      transmitting=1;
       tx_packet(p);
       current_pkts++;
-			for(i=0; i<DELAY; i++) { continue; }
+      while(transmitting) {}
+			//for(i=0; i<DELAY; i++) { continue; }
     }
   }
 }
