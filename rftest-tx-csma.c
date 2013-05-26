@@ -107,7 +107,7 @@ void main(void) {
   *TMR0_CTRL = (COUNT_MODE<<13) | (PRIME_SRC<<9) | (SEC_SRC<<7) | (ONCE<<6) | (LEN<<5) | (DIR<<4) | (CO_INIT<<3) | (OUT_MODE);
   *TMR_ENBL = 0xf;                   /* enable all the timers --- why not? */
 
-  set_channel(1); /* channel 11 */
+  set_channel(11); /* channel 11 */
   set_power(0x12); /* 0x12 is the highest, not documented */
 
   /* sets up tx_on, should be a board specific item */
@@ -131,8 +131,7 @@ void main(void) {
     if(p) {
       fill_packet(p);
 
-      printf("Power: %u\n\r", get_power());  // <--- causes it to work
-      get_power();    // <--- doesn't help any
+      //printf("Power: %u\n\r", get_power());  // <--- causes it to work
       while(get_power()>74) {}
       tx_packet(p);
       current_pkts++;
