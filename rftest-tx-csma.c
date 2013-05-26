@@ -54,7 +54,7 @@
 /* 2 bytes are the FCS */
 /* therefore 125 is the max payload length */
 #define PAYLOAD_LEN 16
-#define DELAY 10000000
+#define DELAY 850
 
 volatile int count=0;
 volatile int current_pkts=0;
@@ -90,6 +90,7 @@ void tick(void) {
 
 void main(void) {
   volatile packet_t *p;
+	volatile uint32_t i;
 
   /* trim the reference osc. to 24MHz */
   trim_xtal();
@@ -130,11 +131,10 @@ void main(void) {
     p = get_free_packet();
     if(p) {
       fill_packet(p);
-
-      //printf("Power: %u\n\r", get_power());  // <--- causes it to work
       while(get_power()>74) {}
       tx_packet(p);
       current_pkts++;
+			for(i=0; i<DELAY; i++) { continue; }
     }
   }
 }
