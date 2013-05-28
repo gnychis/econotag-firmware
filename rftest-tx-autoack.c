@@ -53,28 +53,31 @@
 /* 802.15.4 PSDU is 127 MAX */
 /* 2 bytes are the FCS */
 /* therefore 125 is the max payload length */
-#define PAYLOAD_LEN 16
+#define PAYLOAD_LEN 120
 #define POWER_DELAY 200
 
-volatile int count=0;
+volatile int tick_count=0;
 volatile int current_pkts=0;
+volatile int missing=0;
 
 void fill_packet(volatile packet_t *p) {
-  static volatile unsigned int cnt=0;
-  p->length = 8;
+  volatile int i=0;
+
+  p->length = PAYLOAD_LEN;
   p->offset = 0;
+  p->data[0] = 0x71;  /* 0b 10 01 10 000 1 1 0 0 001 data, ack request, short addr */
+  p->data[1] = 0x98;  /* 0b 10 01 10 000 1 1 0 0 001 data, ack request, short addr */
+  p->data[2] = 0x00; /* dsn */
+  p->data[3] = 0xaa;    /* pan */
+  p->data[4] = 0xaa;
+  p->data[5] = 0x11;    /* dest. short addr. */
+  p->data[6] = 0x11;
+  p->data[7] = 0x22;    /* src. short addr. */
+  p->data[8] = 0x22;
 
-  p->data[3] = cnt & 0xff;
-  p->data[2] = (cnt >> 8*1) & 0xff;
-  p->data[1] = (cnt >> 8*2) & 0xff;
-  p->data[0] = (cnt >> 8*3) & 0xff;
-
-  p->data[4] = 0xff;
-  p->data[5] = 0xff;
-  p->data[6] = 0xff;
-  p->data[7] = 0x07;
-
-  cnt++;
+  /* payload */
+  for(i=9; i < PAYLOAD_LEN; i++)
+    p->data[i] = i & 0xff;
 }
 
 volatile int transmitting=0;
@@ -87,25 +90,34 @@ void blocking_tx_packet(volatile packet_t *p) {
 void maca_tx_callback(volatile packet_t *p) {
   switch(p->status) {
     case 0:
-      transmitting=0;
+      break;
+    case 3:
+      missing++;
+      break;
+    case 5:
+      missing++;
       break;
     default:
       break;
   }
+  transmitting=0;
 }
 
 void tick(void) {
-  if(count%10==0) {
-    printf("Packets-per-second: %d (power: %u)\n\r",current_pkts, get_power());
+  if(tick_count%10==0) {
+    printf("Packets-per-second: %d / %d (%d)\n\r", current_pkts-missing, current_pkts, missing);
     current_pkts=0;
+    missing=0;
   }
   *TMR0_SCTRL = 0; /*clear bit 15, and all the others --- should be ok, but clearly not "the right thing to do" */
-  count++;
+  tick_count++;
 }
 
 void main(void) {
   volatile packet_t *p;
   volatile uint32_t i;
+  uint16_t r=30; /* start reception 100us before ack should arrive */
+  uint16_t end=180; /* 750 us receive window*/
 
   /* trim the reference osc. to 24MHz */
   trim_xtal();
@@ -127,8 +139,14 @@ void main(void) {
   set_power(0x12); /* 0x12 is the highest, not documented */
 
   /* sets up tx_on, should be a board specific item */
-  *GPIO_FUNC_SEL2 = (0x01 << ((44-16*2)*2));
-  gpio_pad_dir_set( 1ULL << 44 );
+  GPIO->FUNC_SEL_44 = 1;	 
+  GPIO->PAD_DIR_SET_44 = 1;	 
+  GPIO->FUNC_SEL_45 = 2;	 
+  GPIO->PAD_DIR_SET_45 = 1;	 
+  *MACA_RXACKDELAY = r;
+  *MACA_RXEND = end;
+
+  set_prm_mode(AUTOACK);
 
   while(1) {		
 

@@ -43,55 +43,46 @@
 #define LED LED_GREEN
 
 void maca_rx_callback(volatile packet_t *p) {
-	(void)p;
-	gpio_data_set(1ULL<< LED);
-	gpio_data_reset(1ULL<< LED);
+  (void)p;
+  gpio_data_set(1ULL<< LED);
+  gpio_data_reset(1ULL<< LED);
 }
 
 void main(void) {
-	volatile packet_t *p;
-	uint8_t chan;
+  volatile packet_t *p;
+  uint8_t chan;
 
-	gpio_data(0);
-	
-	gpio_pad_dir_set( 1ULL << LED );
-        /* read from the data register instead of the pad */
-	/* this is needed because the led clamps the voltage low */
-	gpio_data_sel( 1ULL << LED);
+  gpio_data(0);
+  gpio_pad_dir_set( 1ULL << LED );
+  gpio_data_sel( 1ULL << LED);
+  trim_xtal();
+  uart_init(INC, MOD, SAMP);
+  vreg_init();
+  maca_init();
 
-	/* trim the reference osc. to 24MHz */
-	trim_xtal();
+  /* sets up tx_on, should be a board specific item */
+  *GPIO_FUNC_SEL2 = (0x01 << ((44-16*2)*2));
+  gpio_pad_dir_set( 1ULL << 44 );
 
-	uart_init(INC, MOD, SAMP);
+  set_power(0x0f); /* 0dbm */
+  chan = 15;
+  set_channel(chan); /* channel 11 */
 
-	vreg_init();
+  *MACA_MACPANID = 0xaaaa;
+  *MACA_MAC16ADDR = 0x1111;
+  *MACA_TXACKDELAY = 68; /* 68 puts the tx ack at about the correct spot */
+  set_prm_mode(AUTOACK);
 
-	maca_init();
+  print_welcome("rftest-rx");
+  while(1) {		
 
-        /* sets up tx_on, should be a board specific item */
-        *GPIO_FUNC_SEL2 = (0x01 << ((44-16*2)*2));
-	gpio_pad_dir_set( 1ULL << 44 );
+    /* call check_maca() periodically --- this works around */
+    /* a few lockup conditions */
+    check_maca();
 
-	set_power(0x0f); /* 0dbm */
-	chan = 9;
-	set_channel(chan); /* channel 11 */
+    if((p = rx_packet())) {
+      free_packet(p);
+    }
 
-	*MACA_MACPANID = 0xaaaa;
-	*MACA_MAC16ADDR = 0x1111;
-	*MACA_TXACKDELAY = 68; /* 68 puts the tx ack at about the correct spot */
-	set_prm_mode(AUTOACK);
-
-	print_welcome("rftest-rx");
-	while(1) {		
-
-		/* call check_maca() periodically --- this works around */
-		/* a few lockup conditions */
-		check_maca();
-
-		if((p = rx_packet())) {
-			/* print and free the packet */
-			free_packet(p);
-		}
-
-	}
+  }
 }
