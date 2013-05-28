@@ -66,22 +66,26 @@ void maca_rx_callback(volatile packet_t *p) {
   for(i=0; i<DELAY; i++) { continue; }
 }
 
-volatile int count=0;
+volatile int missing=0;
+volatile int tick_count=0;
 volatile int pcnt=0;
 
 void tick(void) {
 
-  if(count%10==0) {
-    printf("Packets-per-second: %d (power: %u)\n\r",pcnt, get_power());
+  if(tick_count%10==0) {
+    printf("Packets-per-second: %d (power: %u) -- %d / %d\n\r",pcnt, get_power(), missing, missing+pcnt);
     pcnt=0;
+    missing=0;
   }
 
   *TMR0_SCTRL = 0;
-  count++;
+  tick_count++;
 }
 
 void main(void) {
   volatile packet_t *p;
+  volatile unsigned int next_pktnum=0;
+  volatile int init=1;
 
   gpio_data(0);
 
@@ -119,13 +123,23 @@ void main(void) {
     check_maca();
 
     if((p = rx_packet())) {
-      volatile unsigned int val=0;
-      val = val | (p->data[1] << 8*3);
-      val = val | (p->data[2] << 8*2);
-      val = val | (p->data[3] << 8*1);
-      val = val | (p->data[4]);
-
+      volatile unsigned int pktnum=0;
+      pktnum = pktnum | (p->data[1] << 8*3);
+      pktnum = pktnum | (p->data[2] << 8*2);
+      pktnum = pktnum | (p->data[3] << 8*1);
+      pktnum = pktnum | (p->data[4]);
       free_packet(p);
+
+      // If the next expected number is -1, it's an initialization flag
+      if(init) { 
+        next_pktnum = pktnum;
+        init=0;
+      }
+
+      if(pktnum != next_pktnum)
+        missing = missing + (pktnum - next_pktnum);
+
+      next_pktnum = pktnum+1;
       pcnt++;
     }
   }
