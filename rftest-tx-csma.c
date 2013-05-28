@@ -78,30 +78,34 @@ void fill_packet(volatile packet_t *p) {
 }
 
 volatile int transmitting=0;
+void blocking_tx_packet(volatile packet_t *p) {
+  transmitting=1;
+  tx_packet(p);
+  while(transmitting) {}
+}
+
 void maca_tx_callback(volatile packet_t *p) {
-	switch(p->status) {
-	case 0:
-    transmitting=0;
-		break;
-	default:
-    break;
-	}
+  switch(p->status) {
+    case 0:
+      transmitting=0;
+      break;
+    default:
+      break;
+  }
 }
 
 void tick(void) {
-
   if(count%10==0) {
     printf("Packets-per-second: %d (power: %u)\n\r",current_pkts, get_power());
     current_pkts=0;
   }
-
   *TMR0_SCTRL = 0; /*clear bit 15, and all the others --- should be ok, but clearly not "the right thing to do" */
   count++;
 }
 
 void main(void) {
   volatile packet_t *p;
-	//volatile uint32_t i;
+  //volatile uint32_t i;
 
   /* trim the reference osc. to 24MHz */
   trim_xtal();
@@ -119,7 +123,7 @@ void main(void) {
   *TMR0_CTRL = (COUNT_MODE<<13) | (PRIME_SRC<<9) | (SEC_SRC<<7) | (ONCE<<6) | (LEN<<5) | (DIR<<4) | (CO_INIT<<3) | (OUT_MODE);
   *TMR_ENBL = 0xf;                   /* enable all the timers --- why not? */
 
-  set_channel(11); /* channel 11 */
+  set_channel(15); /* channel 11 */
   set_power(0x12); /* 0x12 is the highest, not documented */
 
   /* sets up tx_on, should be a board specific item */
@@ -143,11 +147,8 @@ void main(void) {
     if(p) {
       fill_packet(p);
       while(get_power()>74) {}
-      transmitting=1;
-      tx_packet(p);
+      blocking_tx_packet(p);
       current_pkts++;
-      while(transmitting) {}
-			//for(i=0; i<DELAY; i++) { continue; }
     }
   }
 }
