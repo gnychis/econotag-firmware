@@ -41,131 +41,117 @@
 #include "config.h"
 
 #define LED LED_RED
+#define COUNT_MODE 1      /* use rising edge of primary source */
+#define PRIME_SRC  0xf    /* Perip. clock with 128 prescale (for 24Mhz = 187500Hz)*/
+#define SEC_SRC    0      /* don't need this */
+#define ONCE       0      /* keep counting */
+#define LEN        1      /* count until compare then reload with value in LOAD */
+#define DIR        0      /* count up */
+#define CO_INIT    0      /* other counters cannot force a re-initialization of this counter */
+#define OUT_MODE   0      /* OFLAG is asserted while counter is active */
 
 /* 802.15.4 PSDU is 127 MAX */
 /* 2 bytes are the FCS */
 /* therefore 125 is the max payload length */
 #define PAYLOAD_LEN 16
-#define DELAY 0
-int next_packet;
-unsigned int cnt;
+#define POWER_DELAY 200
 
+volatile int count=0;
+volatile int current_pkts=0;
 
 void fill_packet(volatile packet_t *p) {
-	static volatile uint8_t count=0;
+  static volatile unsigned int cnt=0;
+  p->length = 8;
+  p->offset = 0;
 
-	p->length = 20;
-	p->offset = 0;
-	p->data[0] = 0x71;  /* 0b 10 01 10 000 1 1 0 0 001 data, ack request, short addr */
-	p->data[1] = 0x98;  /* 0b 10 01 10 000 1 1 0 0 001 data, ack request, short addr */
-	p->data[2] = count++; /* dsn */
-	p->data[3] = 0xaa;    /* pan */
-	p->data[4] = 0xaa;
-	p->data[5] = 0x11;    /* dest. short addr. */
- 	p->data[6] = 0x11;
-	p->data[7] = 0x22;    /* src. short addr. */
- 	p->data[8] = 0x22;
+  p->data[3] = cnt & 0xff;
+  p->data[2] = (cnt >> 8*1) & 0xff;
+  p->data[1] = (cnt >> 8*2) & 0xff;
+  p->data[0] = (cnt >> 8*3) & 0xff;
 
-	/* payload */
-	p->data[9] = 'a';
-	p->data[10] = 'c';
-	p->data[11] = 'k';
-	p->data[12] = 't';
-	p->data[13] = 'e';
-	p->data[14] = 's';
-	p->data[15] = 't';
+  p->data[4] = 0xff;
+  p->data[5] = 0xff;
+  p->data[6] = 0xff;
+  p->data[7] = 0x07;
 
-	p->data[19] = cnt & 0xff;
-	p->data[18] = (cnt >> 8*1) & 0xff;
-	p->data[17] = (cnt >> 8*2) & 0xff;
-	p->data[16] = (cnt >> 8*3) & 0xff;
-	cnt++;
+  cnt++;
+}
+
+volatile int transmitting=0;
+void blocking_tx_packet(volatile packet_t *p) {
+  transmitting=1;
+  tx_packet(p);
+  while(transmitting) {}
 }
 
 void maca_tx_callback(volatile packet_t *p) {
-	unsigned int val=0;
-	val = val | (p->data[16] << 8*3);
-	val = val | (p->data[17] << 8*2);
-	val = val | (p->data[18] << 8*1);
-	val = val | (p->data[19]);
-	
-	switch(p->status) {
-	case 0:
-		printf("%u TX OK\n\r", val);
-		break;
-	case 3:
-		printf("%u CRC ERR\n\r", val);
-		break;
-	case 5:
-		printf("%u NO ACK\n\r", val);
-		break;
-	default:
-		printf("unknown status: %d\n", (int)p->status);
-	}
-	next_packet=1;
+  switch(p->status) {
+    case 0:
+      transmitting=0;
+      break;
+    default:
+      break;
+  }
+}
+
+void tick(void) {
+  if(count%10==0) {
+    printf("Packets-per-second: %d (power: %u)\n\r",current_pkts, get_power());
+    current_pkts=0;
+  }
+  *TMR0_SCTRL = 0; /*clear bit 15, and all the others --- should be ok, but clearly not "the right thing to do" */
+  count++;
 }
 
 void main(void) {
-	volatile packet_t *p;
-//	char c;
-	uint16_t r=30; /* start reception 100us before ack should arrive */
-	uint16_t end=180; /* 750 us receive window*/
-	next_packet=1;
-	int i;
-	cnt=0;
+  volatile packet_t *p;
+  volatile uint32_t i;
 
-	/* trim the reference osc. to 24MHz */
-	trim_xtal();
-	uart_init(INC, MOD, SAMP);
-	maca_init();
+  /* trim the reference osc. to 24MHz */
+  trim_xtal();
+  uart_init(INC, MOD, SAMP);
+  vreg_init();
+  maca_init();
 
-	set_channel(9); /* channel 11 */
-//	set_power(0x0f); /* 0xf = -1dbm, see 3-22 */
-//	set_power(0x11); /* 0x11 = 3dbm, see 3-22 */
-	set_power(0x12); /* 0x12 is the highest, not documented */
+  ///* Setup the timer */
+  *TMR_ENBL = 0;                     /* tmrs reset to enabled */
+  *TMR0_SCTRL = 0;
+  *TMR0_LOAD = 0;                    /* reload to zero */
+  *TMR0_COMP_UP = 18750;             /* trigger a reload at the end */
+  *TMR0_CMPLD1 = 18750;              /* compare 1 triggered reload level, 10HZ maybe? */
+  *TMR0_CNTR = 0;                    /* reset count register */
+  *TMR0_CTRL = (COUNT_MODE<<13) | (PRIME_SRC<<9) | (SEC_SRC<<7) | (ONCE<<6) | (LEN<<5) | (DIR<<4) | (CO_INIT<<3) | (OUT_MODE);
+  *TMR_ENBL = 0xf;                   /* enable all the timers --- why not? */
 
-        /* sets up tx_on, should be a board specific item */
-	GPIO->FUNC_SEL_44 = 1;	 
-	GPIO->PAD_DIR_SET_44 = 1;	 
+  set_channel(15); /* channel 11 */
+  set_power(0x12); /* 0x12 is the highest, not documented */
 
-	GPIO->FUNC_SEL_45 = 2;	 
-	GPIO->PAD_DIR_SET_45 = 1;	 
+  /* sets up tx_on, should be a board specific item */
+  *GPIO_FUNC_SEL2 = (0x01 << ((44-16*2)*2));
+  gpio_pad_dir_set( 1ULL << 44 );
 
-	*MACA_RXACKDELAY = r;
-	
-	printf("rx warmup: %d\n\r", (int)(*MACA_WARMUP & 0xfff));
+  while(1) {		
 
-	*MACA_RXEND = end;
+    if((*TMR0_SCTRL >> 15) != 0) 
+      tick();
 
-	printf("rx end: %d\n\r", (int)(*MACA_RXEND & 0xfff));
+    /* call check_maca() periodically --- this works around */
+    /* a few lockup conditions */
+    check_maca();
 
-	set_prm_mode(AUTOACK);
+    while((p = rx_packet())) {
+      if(p) free_packet(p);
+    }
 
-	print_welcome("rftest-tx");
+    p = get_free_packet();
+    if(p) {
+      fill_packet(p);
 
-	while(1) {		
-		for(i=0; i<DELAY; i++) { continue; }
-	    		
-		/* call check_maca() periodically --- this works around */
-		/* a few lockup conditions */
-		check_maca();
+      for(i=0; i<POWER_DELAY; i++) {continue;}
+      while(get_power()>74) {}
 
-		while((p = rx_packet())) {
-			if(p) {
-				printf("RX: ");
-				print_packet(p);
-				free_packet(p);
-			}
-		}
-
-		if(next_packet==1) {
-			next_packet=0;
-			p = get_free_packet();
-			if(p) {
-				fill_packet(p);
-				tx_packet(p);				
-			}
-		}
-	}
-
+      blocking_tx_packet(p);
+      current_pkts++;
+    }
+  }
 }
