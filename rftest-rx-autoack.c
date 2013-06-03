@@ -64,7 +64,8 @@ void main(void) {
   *GPIO_FUNC_SEL2 = (0x01 << ((44-16*2)*2));
   gpio_pad_dir_set( 1ULL << 44 );
 
-  set_power(0x0f); /* 0dbm */
+  //set_power(0x0f); /* 0dbm */
+  set_power(0x12); /* 0dbm */
   chan = 15;
   set_channel(chan); /* channel 11 */
 
