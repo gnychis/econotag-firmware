@@ -50,10 +50,30 @@
 #define CO_INIT    0      /* other counters cannot force a re-initialization of this counter */
 #define OUT_MODE   0      /* OFLAG is asserted while counter is active */
 
-/* 802.15.4 PSDU is 127 MAX */
-/* 2 bytes are the FCS */
-/* therefore 125 is the max payload length */
-#define PAYLOAD_LEN 120
+#define NODE_A
+//#define NODE_B
+
+/*
+    1369863 --> 1 second
+    136986  --> 100ms
+    82188   --> 60ms
+    54794   --> 40ms
+    13698   --> 10ms
+    6849    --> 5ms
+    2738    --> 2ms
+    1369    --> 1ms
+*/
+#ifdef NODE_A
+#define MAX_WAIT 13698
+#else
+#define MAX_WAIT 82188
+#endif
+
+#ifdef NODE_A
+#define PAYLOAD_LEN 75
+#else
+#define PAYLOAD_LEN 45
+#endif
 
 void fill_packet(volatile packet_t *p) {
   volatile int i=0;
@@ -74,15 +94,6 @@ void fill_packet(volatile packet_t *p) {
     p->data[i] = i & 0xff;
 }
 
-/*
-    1369863 --> 1 second
-    136986  --> 100ms
-    13698   --> 10ms
-    6849    --> 5ms
-    2738    --> 2ms
-    1369    --> 1ms
-*/
-#define MAX_WAIT 13698
 void random_wait(void) {
   volatile uint32_t wait = (unsigned int)maca_random%MAX_WAIT;
   while(wait>0) {wait--;}
@@ -95,7 +106,7 @@ unsigned int cnt=0;
 void tmr0_isr(void) {
 
   if(count%10==0) {
-    printf("Packets-per-second: %d %u %u\n\r", pkt_cnt, PAYLOAD_LEN, MAX_WAIT);
+    printf("Packets-per-second: %d  Payload: %u  MaxWait: %u\n\r", pkt_cnt, PAYLOAD_LEN, MAX_WAIT/1369);
     pkt_cnt=0;
   }
 
