@@ -53,11 +53,13 @@
 /* 802.15.4 PSDU is 127 MAX */
 /* 2 bytes are the FCS */
 /* therefore 125 is the max payload length */
-#define PAYLOAD_LEN 16
+#define PAYLOAD_LEN 120
 #define DELAY 10000000
 
 void fill_packet(volatile packet_t *p) {
-  p->length = 8;
+  volatile int i=0;
+
+  p->length = PAYLOAD_LEN;
   p->offset = 0;
   p->data[0] = 0x03;
   p->data[1] = 0x08;
@@ -68,6 +70,9 @@ void fill_packet(volatile packet_t *p) {
   p->data[6] = 0xff;
   p->data[7] = 0x07;
 
+  /* payload */
+  for(i=8; i < PAYLOAD_LEN; i++)
+    p->data[i] = i & 0xff;
 }
 
 int count=0;
@@ -77,7 +82,7 @@ unsigned int cnt=0;
 void tmr0_isr(void) {
 
   if(count%10==0) {
-    printf("Packets-per-second: %d\n\r",pkt_cnt*6);
+    printf("Packets-per-second: %d %f\n\r", pkt_cnt, 7.0/2.0);
     pkt_cnt=0;
   }
 
@@ -85,9 +90,25 @@ void tmr0_isr(void) {
   count++;
 }
 
+volatile int transmitting=0;
+void blocking_tx_packet(volatile packet_t *p) {
+  transmitting=1;
+  tx_packet(p);
+  while(transmitting) {}
+}
+
+void maca_tx_callback(volatile packet_t *p) {
+  switch(p->status) {
+    case 0:
+      transmitting=0;
+      break;
+    default:
+      break;
+  }
+}
+
 void main(void) {
   volatile packet_t *p;
-  int i;
 
   /* trim the reference osc. to 24MHz */
   trim_xtal();
@@ -105,7 +126,7 @@ void main(void) {
   *TMR0_CTRL = (COUNT_MODE<<13) | (PRIME_SRC<<9) | (SEC_SRC<<7) | (ONCE<<6) | (LEN<<5) | (DIR<<4) | (CO_INIT<<3) | (OUT_MODE);
   *TMR_ENBL = 0xf;                   /* enable all the timers --- why not? */
 
-  set_channel(1); /* channel 11 */
+  set_channel(14); /* channel 11 */
   set_power(0x12); /* 0x12 is the highest, not documented */
 
   /* sets up tx_on, should be a board specific item */
@@ -138,13 +159,9 @@ void main(void) {
       //printf("rftest-tx %u--- ", pkt_cnt);
       //print_packet(p);
 
-      tx_packet(p);
+      blocking_tx_packet(p);
       pkt_cnt++;
       cnt++;
-
-      for(i=0; i<DELAY; i++) { continue; }
     }
-
   }
-
 }
