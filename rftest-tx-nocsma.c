@@ -54,7 +54,6 @@
 /* 2 bytes are the FCS */
 /* therefore 125 is the max payload length */
 #define PAYLOAD_LEN 120
-#define DELAY 10000000
 
 void fill_packet(volatile packet_t *p) {
   volatile int i=0;
@@ -75,6 +74,20 @@ void fill_packet(volatile packet_t *p) {
     p->data[i] = i & 0xff;
 }
 
+/*
+    1369863 --> 1 second
+    136986  --> 100ms
+    13698   --> 10ms
+    6849    --> 5ms
+    2738    --> 2ms
+    1369    --> 1ms
+*/
+#define MAX_WAIT 13698
+void random_wait(void) {
+  volatile uint32_t wait = (unsigned int)maca_random%MAX_WAIT;
+  while(wait>0) {wait--;}
+}
+
 int count=0;
 unsigned int pkt_cnt=0;
 unsigned int cnt=0;
@@ -82,7 +95,7 @@ unsigned int cnt=0;
 void tmr0_isr(void) {
 
   if(count%10==0) {
-    printf("Packets-per-second: %d %f\n\r", pkt_cnt, 7.0/2.0);
+    printf("Packets-per-second: %d %u %u\n\r", pkt_cnt, PAYLOAD_LEN, MAX_WAIT);
     pkt_cnt=0;
   }
 
@@ -162,6 +175,8 @@ void main(void) {
       blocking_tx_packet(p);
       pkt_cnt++;
       cnt++;
+
+      random_wait();
     }
   }
 }
