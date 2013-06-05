@@ -75,6 +75,12 @@
 #define PAYLOAD_LEN 45
 #endif
 
+#ifdef NODE_A
+#define channel 15
+#else
+#define channel 14
+#endif
+
 void fill_packet(volatile packet_t *p) {
   volatile int i=0;
 
@@ -150,7 +156,7 @@ void main(void) {
   *TMR0_CTRL = (COUNT_MODE<<13) | (PRIME_SRC<<9) | (SEC_SRC<<7) | (ONCE<<6) | (LEN<<5) | (DIR<<4) | (CO_INIT<<3) | (OUT_MODE);
   *TMR_ENBL = 0xf;                   /* enable all the timers --- why not? */
 
-  set_channel(14); /* channel 11 */
+  set_channel(channel); /* channel 11 */
   set_power(0x12); /* 0x12 is the highest, not documented */
 
   /* sets up tx_on, should be a board specific item */
