@@ -50,11 +50,15 @@
 #define CO_INIT    0      /* other counters cannot force a re-initialization of this counter */
 #define OUT_MODE   0      /* OFLAG is asserted while counter is active */
 
+#define POWER_DELAY 200
+
 #define NODE_A
 //#define NODE_B
 
 /*
     1369863 --> 1 second
+    328752  --> 240ms
+    164376  --> 120ms
     136986  --> 100ms
     82188   --> 60ms
     54794   --> 40ms
@@ -62,24 +66,21 @@
     6849    --> 5ms
     2738    --> 2ms
     1369    --> 1ms
+    228     --> 166us
 */
+#define RANDOM_WAIT_TIME
+#define BLOCKING_TX
 #ifdef NODE_A
-#define MAX_WAIT 13698
+  #define MAX_WAIT 2738
+  #define PAYLOAD_LEN 75
+  #define channel 15
 #else
-#define MAX_WAIT 82188
+  #define MAX_WAIT 82188
+  #define PAYLOAD_LEN 45
+  #define channel 15
+  #define CARRIER_SENSE
 #endif
 
-#ifdef NODE_A
-#define PAYLOAD_LEN 75
-#else
-#define PAYLOAD_LEN 45
-#endif
-
-#ifdef NODE_A
-#define channel 15
-#else
-#define channel 14
-#endif
 
 void fill_packet(volatile packet_t *p) {
   volatile int i=0;
@@ -140,6 +141,10 @@ void maca_tx_callback(volatile packet_t *p) {
 void main(void) {
   volatile packet_t *p;
 
+#ifdef CARRIER_SENSE
+  volatile int i=0;
+#endif
+
   /* trim the reference osc. to 24MHz */
   trim_xtal();
   uart_init(INC, MOD, SAMP);
@@ -186,14 +191,23 @@ void main(void) {
       p->data[1] = (cnt >> 8*2) & 0xff;
       p->data[0] = (cnt >> 8*3) & 0xff;
 
-      //printf("rftest-tx %u--- ", pkt_cnt);
-      //print_packet(p);
+#ifdef CARRIER_SENSE
+      for(i=0; i<POWER_DELAY; i++) {continue;}
+      while(get_power()>74) {}
+#endif
 
+#ifdef BLOCKING_TX
       blocking_tx_packet(p);
+#else
+      tx_packet(p);
+#endif
+
       pkt_cnt++;
       cnt++;
 
+#ifdef RANDOM_WAIT_TIME
       random_wait();
+#endif
     }
   }
 }
