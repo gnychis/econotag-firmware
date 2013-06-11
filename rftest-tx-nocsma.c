@@ -68,8 +68,8 @@
     1369    --> 1ms
     228     --> 166us
 */
-#define RANDOM_WAIT_TIME
-#define BLOCKING_TX
+//#define RANDOM_WAIT_TIME
+//#define BLOCKING_TX
 #ifdef NODE_A
   #define MAX_WAIT 2738
   #define PAYLOAD_LEN 75

@@ -142,5 +142,9 @@ void main(void) {
       next_pktnum = pktnum+1;
       pcnt++;
     }
+		if(uart1_can_get()) {
+			uart1_getc();
+			printf("Current power: %d\n\r", get_power());
+		}
   }
 }
