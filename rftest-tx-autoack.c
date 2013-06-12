@@ -50,11 +50,15 @@
 #define CO_INIT    0      /* other counters cannot force a re-initialization of this counter */
 #define OUT_MODE   0      /* OFLAG is asserted while counter is active */
 
+//#define CARRIER_SENSE
+
 /* 802.15.4 PSDU is 127 MAX */
 /* 2 bytes are the FCS */
 /* therefore 125 is the max payload length */
 #define PAYLOAD_LEN 120
 #define POWER_DELAY 200
+
+#define BLOCKING_TX
 
 volatile int tick_count=0;
 volatile int current_pkts=0;
@@ -115,7 +119,9 @@ void tick(void) {
 
 void main(void) {
   volatile packet_t *p;
+#ifdef CARRIER_SENSE
   volatile uint32_t i;
+#endif
   uint16_t r=30; /* start reception 100us before ack should arrive */
   uint16_t end=180; /* 750 us receive window*/
 
@@ -165,10 +171,17 @@ void main(void) {
     if(p) {
       fill_packet(p);
 
+#ifdef CARRIER_SENSE
       for(i=0; i<POWER_DELAY; i++) {continue;}
       while(get_power()>74) {}
+#endif
 
+#ifdef BLOCKING_TX
       blocking_tx_packet(p);
+#else
+      tx_packet(p);
+#endif
+
       current_pkts++;
     }
   }

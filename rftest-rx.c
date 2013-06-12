@@ -73,7 +73,7 @@ volatile int pcnt=0;
 void tick(void) {
 
   if(tick_count%10==0) {
-    printf("Packets-per-second: %d (power: %u) -- %d / %d\n\r",pcnt, get_power(), missing, missing+pcnt);
+    printf("Packets-per-second: %d (power: %u, rssi: %u, dbm: %d, lqi: %u) -- %d / %d\n\r",pcnt, get_power(), get_rssi(), (int)get_dbm(), get_lqi(), missing, missing+pcnt);
     pcnt=0;
     missing=0;
   }
@@ -108,7 +108,7 @@ void main(void) {
   *TMR0_CTRL = (COUNT_MODE<<13) | (PRIME_SRC<<9) | (SEC_SRC<<7) | (ONCE<<6) | (LEN<<5) | (DIR<<4) | (CO_INIT<<3) | (OUT_MODE);
   *TMR_ENBL = 0xf;                   /* enable all the timers --- why not? */
 
-  set_channel(15); /* channel 11 */
+  set_channel(11); /* channel 11 */
   set_power(0x0f); /* 0dbm */
 
   gpio_pad_dir_set( 1ULL << 44 );

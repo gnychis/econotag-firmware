@@ -55,6 +55,7 @@ void set_channel(uint8_t chan);
 extern uint8_t (*get_lqi)(void);
 extern uint16_t get_rssi(void);
 extern uint16_t get_power(void);
+extern int32_t get_dbm(void);
 extern uint16_t get_ed(void);
 extern void set_ed(int enable);
 extern uint16_t get_ed_thresh(void);

@@ -1108,6 +1108,16 @@ uint16_t get_rssi(void)
  return (*RX_LNA_IFA_RSSI & 0x03ff);
 }
 
+int32_t get_dbm(void)
+{
+  volatile int32_t reg;
+  reg = *((volatile uint32_t *)(0x80009494))&0x3ff;
+  reg *=1000;
+  reg -=708124+7122;  //less 1 dB
+  reg /=7122;          //now dBm
+  return reg;
+}
+
 uint16_t get_power(void)
 {
  return (*RX_LNA_IFA_POWER & 0xff);

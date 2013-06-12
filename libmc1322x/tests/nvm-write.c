@@ -76,7 +76,7 @@ void main(void) {
 	printf("nvm_erase returned: 0x%02x\r\n", err);
 
 	err = nvm_write(NVM_INTERFACE, type, (uint8_t *)buf, WRITE_ADDR, WRITE_NBYTES);
-	printf("nvm_write returned: 0x%02x\r\n", err);
+	printf("gnychis nvm_write returned: 0x%02x\r\n", err);
 
 	printf("writing\n\r");
 	for(i=0; i<WRITE_NBYTES/4; i++) {

@@ -73,12 +73,11 @@
 #ifdef NODE_A
   #define MAX_WAIT 2738
   #define PAYLOAD_LEN 75
-  #define channel 15
+  #define channel 11
 #else
   #define MAX_WAIT 82188
   #define PAYLOAD_LEN 45
   #define channel 15
-  #define CARRIER_SENSE
 #endif
 
 
@@ -140,6 +139,7 @@ void maca_tx_callback(volatile packet_t *p) {
 
 void main(void) {
   volatile packet_t *p;
+  volatile int hold_tx=0;
 
 #ifdef CARRIER_SENSE
   volatile int i=0;
@@ -169,9 +169,20 @@ void main(void) {
   gpio_pad_dir_set( 1ULL << 44 );
 
   while(1) {		
+		
+    if(uart1_can_get()) {
+			uart1_getc();
+      if(hold_tx==0)
+        hold_tx=1;
+      else
+        hold_tx=0;
+		}
 
     if((*TMR0_SCTRL >> 15) != 0) 
       tmr0_isr();
+
+    if(hold_tx)
+      continue;
 
     /* call check_maca() periodically --- this works around */
     /* a few lockup conditions */
