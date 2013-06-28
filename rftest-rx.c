@@ -51,6 +51,7 @@
 #define OUT_MODE   0      /* OFLAG is asserted while counter is active */
 
 #define DELAY 400000
+#define ADDR 0xcc
 
 #define NEWLED (1ULL << LED_GREEN)
 
@@ -69,13 +70,15 @@ void maca_rx_callback(volatile packet_t *p) {
 volatile int missing=0;
 volatile int tick_count=0;
 volatile int pcnt=0;
+volatile int other_dbm=-100;
 
 void tick(void) {
 
   if(tick_count%10==0) {
-    printf("Packets-per-second: %d (power: %u, rssi: %u, dbm: %d, lqi: %u) -- %d / %d\n\r",pcnt, get_power(), get_rssi(), (int)get_dbm(), get_lqi(), missing, missing+pcnt);
+    printf("Packets-per-second: %d (power: %u, rssi: %u, dbm: %d, lqi: %u) -- %d / %d otherDBM: %d\n\r",pcnt, get_power(), get_rssi(), (int)get_dbm(), get_lqi(), missing, missing+pcnt, other_dbm);
     pcnt=0;
     missing=0;
+    other_dbm=-100;
   }
 
   *TMR0_SCTRL = 0;
@@ -129,6 +132,12 @@ void main(void) {
       pktnum = pktnum | (p->data[3] << 8*1);
       pktnum = pktnum | (p->data[4]);
       free_packet(p);
+
+      if(p->data[7]==0xdd) 
+        other_dbm = p->dbm;
+
+      if(p->data[7]!=ADDR)
+        continue;
 
       // If the next expected number is -1, it's an initialization flag
       if(init) { 

@@ -80,6 +80,7 @@
   #define channel 15
 #endif
 
+#define ADDR 0xcc
 
 void fill_packet(volatile packet_t *p) {
   volatile int i=0;
@@ -92,7 +93,7 @@ void fill_packet(volatile packet_t *p) {
   p->data[3] = 0xff;
   p->data[4] = 0xff;
   p->data[5] = 0xff;
-  p->data[6] = 0xff;
+  p->data[6] = ADDR;
   p->data[7] = 0x07;
 
   /* payload */

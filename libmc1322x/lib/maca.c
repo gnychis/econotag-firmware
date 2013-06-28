@@ -618,6 +618,7 @@ void maca_isr(void) {
 		dma_rx->length = *MACA_GETRXLVL - 2; /* packet length does not include FCS */
 		dma_rx->lqi = get_lqi();
     dma_rx->rssi = get_rssi();
+    dma_rx->dbm = get_dbm();
 		dma_rx->rx_time = *MACA_TIMESTAMP;
 
 		/* check if received packet needs an ack */
