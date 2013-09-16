@@ -52,6 +52,8 @@
 
 #define POWER_DELAY 200
 
+#define FIXED_WAIT
+
 #define NODE_A
 //#define NODE_B
 
@@ -71,9 +73,9 @@
 //#define RANDOM_WAIT_TIME
 //#define BLOCKING_TX
 #ifdef NODE_A
-  #define MAX_WAIT 2738
+  #define MAX_WAIT 13698
   #define PAYLOAD_LEN 75
-  #define channel 11
+  #define channel 1
 #else
   #define MAX_WAIT 82188
   #define PAYLOAD_LEN 45
@@ -102,7 +104,11 @@ void fill_packet(volatile packet_t *p) {
 }
 
 void random_wait(void) {
+#ifndef FIXED_WAIT
   volatile uint32_t wait = (unsigned int)maca_random%MAX_WAIT;
+#else
+  volatile uint32_t wait = (unsigned int)MAX_WAIT;
+#endif
   while(wait>0) {wait--;}
 }
 
