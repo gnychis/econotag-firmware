@@ -42,6 +42,8 @@
 
 #define LED LED_GREEN
 
+#define CHANNEL 1
+
 void maca_rx_callback(volatile packet_t *p) {
   (void)p;
   gpio_data_set(1ULL<< LED);
@@ -66,8 +68,8 @@ void main(void) {
 
   //set_power(0x0f); /* 0dbm */
   set_power(0x12); /* 0dbm */
-  chan = 15;
-  set_channel(chan); /* channel 11 */
+  chan = 1;
+  set_channel(CHANNEL); /* channel 11 */
 
   *MACA_MACPANID = 0xaaaa;
   *MACA_MAC16ADDR = 0x1111;

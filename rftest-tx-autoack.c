@@ -50,12 +50,38 @@
 #define CO_INIT    0      /* other counters cannot force a re-initialization of this counter */
 #define OUT_MODE   0      /* OFLAG is asserted while counter is active */
 
+#define NODE_A
+//#define FIXED_WAIT
+#define RANDOM_WAIT_TIME
+
+/*
+    1369863 --> 1 second
+    328752  --> 240ms
+    164376  --> 120ms
+    136986  --> 100ms
+    82188   --> 60ms
+    54794   --> 40ms
+    13698   --> 10ms
+    6849    --> 5ms
+    2738    --> 2ms
+    1369    --> 1ms
+    228     --> 166us
+*/
+#ifdef NODE_A
+  #define MAX_WAIT 82188
+  #define PAYLOAD_LEN 45
+  #define CHANNEL 1
+#else
+  #define MAX_WAIT 82188
+  #define PAYLOAD_LEN 45
+  #define CHANNEL 15
+#endif
+
 //#define CARRIER_SENSE
 
 /* 802.15.4 PSDU is 127 MAX */
 /* 2 bytes are the FCS */
 /* therefore 125 is the max payload length */
-#define PAYLOAD_LEN 120
 #define POWER_DELAY 200
 
 #define BLOCKING_TX
@@ -63,6 +89,30 @@
 volatile int tick_count=0;
 volatile int current_pkts=0;
 volatile int missing=0;
+
+void tick(void) {
+  if(tick_count%10==0) {
+    printf("Packets-per-second: %d / %d (%d)\n\r", current_pkts-missing, current_pkts, missing);
+    current_pkts=0;
+    missing=0;
+  }
+  *TMR0_SCTRL = 0; /*clear bit 15, and all the others --- should be ok, but clearly not "the right thing to do" */
+  tick_count++;
+}
+
+
+void random_wait(void) {
+#ifdef RANDOM_WAIT_TIME
+  volatile uint32_t wait = (unsigned int)(maca_random%MAX_WAIT)/2;
+#else
+  volatile uint32_t wait = (unsigned int)(MAX_WAIT/2);
+#endif
+  while(wait>0) {
+    wait--;
+    if((*TMR0_SCTRL >> 15) != 0) 
+      tick();
+  }
+}
 
 void fill_packet(volatile packet_t *p) {
   volatile int i=0;
@@ -107,16 +157,6 @@ void maca_tx_callback(volatile packet_t *p) {
   transmitting=0;
 }
 
-void tick(void) {
-  if(tick_count%10==0) {
-    printf("Packets-per-second: %d / %d (%d)\n\r", current_pkts-missing, current_pkts, missing);
-    current_pkts=0;
-    missing=0;
-  }
-  *TMR0_SCTRL = 0; /*clear bit 15, and all the others --- should be ok, but clearly not "the right thing to do" */
-  tick_count++;
-}
-
 void main(void) {
   volatile packet_t *p;
 #ifdef CARRIER_SENSE
@@ -141,7 +181,7 @@ void main(void) {
   *TMR0_CTRL = (COUNT_MODE<<13) | (PRIME_SRC<<9) | (SEC_SRC<<7) | (ONCE<<6) | (LEN<<5) | (DIR<<4) | (CO_INIT<<3) | (OUT_MODE);
   *TMR_ENBL = 0xf;                   /* enable all the timers --- why not? */
 
-  set_channel(15); /* channel 11 */
+  set_channel(CHANNEL); /* channel 11 */
   set_power(0x12); /* 0x12 is the highest, not documented */
 
   /* sets up tx_on, should be a board specific item */
@@ -183,6 +223,10 @@ void main(void) {
 #endif
 
       current_pkts++;
+
+#if defined(RANDOM_WAIT_TIME) || defined(FIXED_WAIT)
+      random_wait();
+#endif
     }
   }
 }
